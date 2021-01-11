@@ -1,6 +1,10 @@
+require("datejs");
 const express = require("express");
 const bodyParser = require("body-parser");
-const { authFactory, AuthError } = require("./utils/auth");
+const mongoose = require("mongoose");
+
+const { user, password, dbname } = require("./config/db");
+const routes = require("./routes/");
 
 const PORT = 3000;
 const { JWT_SECRET } = process.env;
@@ -9,34 +13,16 @@ if (!JWT_SECRET) {
   throw new Error("Missing JWT_SECRET env var. Set it and restart the server");
 }
 
-const {auth} = authFactory(JWT_SECRET);
 const app = express();
+
+mongoose.connect(
+  `mongodb+srv://${user}:${password}@cluster0.umor1.mongodb.net/${dbname}?retryWrites=true&w=majority`,
+  { useNewUrlParser: true, useUnifiedTopology: true }
+);
 
 app.use(bodyParser.json());
 
-app.post("/auth", (req, res, next) => {
-  if (!req.body) {
-    return res.status(400).json({ error: "invalid payload" });
-  }
-
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: "invalid payload" });
-  }
-
-  try {
-    const token = auth(username, password);
-
-    return res.status(200).json({ token });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return res.status(401).json({ error: error.message });
-    }
-
-    next(error);
-  }
-});
+app.use(routes);
 
 app.use((error, _, res, __) => {
   console.error(
